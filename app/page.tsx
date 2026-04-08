@@ -33,7 +33,7 @@ export default function Page() {
     <div className={styles.container}>
       <h1 className={styles.title}>openhacker.ai</h1>
       <p className={styles.subtitle}>
-        <span className={styles.typed}>{text}</span> soon
+        &gt; <span className={styles.typed}>{text}</span> soon
       </p>
     </div>
   );
