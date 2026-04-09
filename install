@@ -22,8 +22,8 @@ Options:
   --no-modify-path      Do not add the install directory to PATH
 
 Examples:
-  curl -fsSL https://raw.githubusercontent.com/natemcgrady/openhacker/main/install | bash
-  curl -fsSL https://raw.githubusercontent.com/natemcgrady/openhacker/main/install | bash -s -- --version 0.1.0
+  curl -fsSL https://openhacker.ai/install | bash
+  curl -fsSL https://openhacker.ai/install | bash -s -- --version 0.1.0
   ./install --binary /path/to/openhacker
 EOF
 }

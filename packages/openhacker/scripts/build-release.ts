@@ -3,6 +3,18 @@ import path from "node:path"
 
 type SupportedPlatform = "darwin" | "linux" | "windows"
 type SupportedArch = "arm64" | "x64"
+type SpawnResult = { exited: Promise<number> }
+
+declare const Bun: {
+  spawn(
+    command: string[],
+    options: {
+      cwd: string
+      stdout: "inherit"
+      stderr: "inherit"
+    },
+  ): SpawnResult
+}
 
 const packageDir = process.cwd()
 const distDir = path.join(packageDir, "dist")

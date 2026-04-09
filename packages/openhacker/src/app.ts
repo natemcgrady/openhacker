@@ -13,7 +13,6 @@ export function createLandingPage() {
     Text({
       content: "openhacker",
       fg: "#67e8f9",
-      bold: true,
     }),
     Text({
       content: "hacking soon",

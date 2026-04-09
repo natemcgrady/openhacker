@@ -17,7 +17,7 @@ pnpm openhacker:build
 ## Install like OpenCode
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/natemcgrady/openhacker/main/install | bash
+curl -fsSL https://openhacker.ai/install | bash
 ```
 
 ## Publish release assets
