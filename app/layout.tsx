@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GeistPixelSquare } from "geist/font/pixel";
+import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://openhacker.ai"),
