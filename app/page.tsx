@@ -31,7 +31,7 @@ export default function Page() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>openhacker.ai</h1>
+      <h1 className={styles.title}>OpenHacker</h1>
       <p className={styles.subtitle}>
         &gt; <span className={styles.typed}>{text}</span> soon
       </p>
