@@ -3,7 +3,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "openhacker:dev": "pnpm --filter openhacker dev",
+    "openhacker:build": "pnpm --filter openhacker build:release"
   },
   "dependencies": {
     "geist": "^1.7.0",

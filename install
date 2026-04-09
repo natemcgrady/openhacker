@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP="openhacker"
+REPO="natemcgrady/openhacker"
+INSTALL_DIR="${OPENHACKER_INSTALL_DIR:-$HOME/.openhacker/bin}"
+BINARY_NAME="$APP"
+
+MUTED='\033[0;2m'
+RED='\033[0;31m'
+ORANGE='\033[38;5;214m'
+NC='\033[0m'
+
+usage() {
+  cat <<'EOF'
+Install OpenHacker from GitHub releases.
+
+Options:
+  -h, --help            Show help
+  -v, --version <ver>   Install a specific version
+  -b, --binary <path>   Install from a local binary
+  --no-modify-path      Do not add the install directory to PATH
+
+Examples:
+  curl -fsSL https://raw.githubusercontent.com/natemcgrady/openhacker/main/install | bash
+  curl -fsSL https://raw.githubusercontent.com/natemcgrady/openhacker/main/install | bash -s -- --version 0.1.0
+  ./install --binary /path/to/openhacker
+EOF
+}
+
+requested_version="${VERSION:-}"
+binary_path=""
+no_modify_path=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -v|--version)
+      requested_version="${2:-}"
+      if [[ -z "$requested_version" ]]; then
+        echo -e "${RED}Error: --version requires a version argument${NC}"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -b|--binary)
+      binary_path="${2:-}"
+      if [[ -z "$binary_path" ]]; then
+        echo -e "${RED}Error: --binary requires a path argument${NC}"
+        exit 1
+      fi
+      shift 2
+      ;;
+    --no-modify-path)
+      no_modify_path=true
+      shift
+      ;;
+    *)
+      echo -e "${ORANGE}Warning: Unknown option '$1'${NC}" >&2
+      shift
+      ;;
+  esac
+done
+
+mkdir -p "$INSTALL_DIR"
+
+detect_platform() {
+  case "$(uname -s)" in
+    Darwin) echo "darwin" ;;
+    Linux) echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    *)
+      echo -e "${RED}Unsupported operating system${NC}"
+      exit 1
+      ;;
+  esac
+}
+
+detect_arch() {
+  case "$(uname -m)" in
+    arm64|aarch64) echo "arm64" ;;
+    x86_64) echo "x64" ;;
+    *)
+      echo -e "${RED}Unsupported architecture${NC}"
+      exit 1
+      ;;
+  esac
+}
+
+set_binary_name() {
+  if [[ "$(detect_platform)" == "windows" ]]; then
+    BINARY_NAME="${APP}.exe"
+  fi
+}
+
+print_message() {
+  local level=$1
+  local message=$2
+
+  case "$level" in
+    error) echo -e "${RED}${message}${NC}" ;;
+    *)
+      echo -e "${message}${NC}"
+      ;;
+  esac
+}
+
+download_release() {
+  local platform="$1"
+  local arch="$2"
+  local archive_ext=".zip"
+
+  if [[ "$platform" == "linux" ]]; then
+    archive_ext=".tar.gz"
+  fi
+
+  local filename="${APP}-${platform}-${arch}${archive_ext}"
+  local version="$requested_version"
+
+  if [[ -z "$version" ]]; then
+    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)
+  fi
+
+  if [[ -z "$version" ]]; then
+    print_message error "Failed to determine the latest OpenHacker version."
+    exit 1
+  fi
+
+  version="${version#v}"
+  local url="https://github.com/${REPO}/releases/download/v${version}/${filename}"
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  local archive_path="${tmp_dir}/${filename}"
+
+  print_message info "\n${MUTED}Installing ${NC}${APP} ${MUTED}version: ${NC}${version}"
+  curl -fL -o "$archive_path" "$url"
+
+  if [[ "$platform" == "linux" ]]; then
+    tar -xzf "$archive_path" -C "$tmp_dir"
+  else
+    unzip -q "$archive_path" -d "$tmp_dir"
+  fi
+
+  mv "${tmp_dir}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"
+  chmod 755 "${INSTALL_DIR}/${BINARY_NAME}"
+  rm -rf "$tmp_dir"
+}
+
+install_from_binary() {
+  if [[ ! -f "$binary_path" ]]; then
+    print_message error "Binary not found at ${binary_path}"
+    exit 1
+  fi
+
+  print_message info "\n${MUTED}Installing ${NC}${APP} ${MUTED}from: ${NC}${binary_path}"
+  cp "$binary_path" "${INSTALL_DIR}/${BINARY_NAME}"
+  chmod 755 "${INSTALL_DIR}/${BINARY_NAME}"
+}
+
+add_to_path() {
+  local config_file="$1"
+  local command="$2"
+
+  if grep -Fxq "$command" "$config_file"; then
+    print_message info "${MUTED}PATH entry already exists in ${NC}${config_file}"
+    return
+  fi
+
+  echo -e "\n# openhacker" >> "$config_file"
+  echo "$command" >> "$config_file"
+  print_message info "${MUTED}Added ${NC}${INSTALL_DIR} ${MUTED}to PATH in ${NC}${config_file}"
+}
+
+set_binary_name
+
+if [[ -n "$binary_path" ]]; then
+  install_from_binary
+else
+  download_release "$(detect_platform)" "$(detect_arch)"
+fi
+
+if [[ "$no_modify_path" != "true" ]] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+  current_shell="$(basename "${SHELL:-}")"
+  XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+  case "$current_shell" in
+    zsh)
+      config_files=("${ZDOTDIR:-$HOME}/.zshrc" "${ZDOTDIR:-$HOME}/.zshenv" "$XDG_CONFIG_HOME/zsh/.zshrc")
+      command="export PATH=$INSTALL_DIR:\$PATH"
+      ;;
+    bash)
+      config_files=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" "$XDG_CONFIG_HOME/bash/.bashrc")
+      command="export PATH=$INSTALL_DIR:\$PATH"
+      ;;
+    fish)
+      config_files=("$HOME/.config/fish/config.fish")
+      command="fish_add_path $INSTALL_DIR"
+      ;;
+    *)
+      config_files=("$HOME/.profile")
+      command="export PATH=$INSTALL_DIR:\$PATH"
+      ;;
+  esac
+
+  for file in "${config_files[@]}"; do
+    if [[ -f "$file" ]]; then
+      add_to_path "$file" "$command"
+      break
+    fi
+  done
+fi
+
+echo -e ""
+echo -e "${MUTED}OpenHacker installed to ${NC}${INSTALL_DIR}/${BINARY_NAME}"
+echo -e "${MUTED}Run ${NC}${APP}${MUTED} to launch the TUI.${NC}"
+echo -e ""
