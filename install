@@ -182,6 +182,8 @@ else
   download_release "$(detect_platform)" "$(detect_arch)"
 fi
 
+path_updated=false
+
 if [[ "$no_modify_path" != "true" ]] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   current_shell="$(basename "${SHELL:-}")"
   XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -208,6 +210,7 @@ if [[ "$no_modify_path" != "true" ]] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; t
   for file in "${config_files[@]}"; do
     if [[ -f "$file" ]]; then
       add_to_path "$file" "$command"
+      path_updated=true
       break
     fi
   done
@@ -215,5 +218,9 @@ fi
 
 echo -e ""
 echo -e "${MUTED}OpenHacker installed to ${NC}${INSTALL_DIR}/${BINARY_NAME}"
-echo -e "${MUTED}Run ${NC}${APP}${MUTED} to launch the TUI.${NC}"
+if [[ "$path_updated" == "true" ]]; then
+  echo -e "${MUTED}Restart your shell or run ${NC}source ~/.zshrc${MUTED}, then launch with ${NC}${APP}${MUTED}.${NC}"
+else
+  echo -e "${MUTED}Run ${NC}${APP}${MUTED} to launch the TUI.${NC}"
+fi
 echo -e ""

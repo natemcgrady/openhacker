@@ -5,7 +5,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "bin": {
-    "openhacker": "./bin/openhacker.cjs"
+    "openhacker": "./bin/openhacker"
   },
   "files": [
     "bin",

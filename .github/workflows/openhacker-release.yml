@@ -26,10 +26,18 @@ jobs:
             label: macOS arm64
             binary_path: packages/openhacker/dist/openhacker
             archive_glob: packages/openhacker/dist/openhacker-darwin-arm64.zip
+          - os: macos-13
+            label: macOS x64
+            binary_path: packages/openhacker/dist/openhacker
+            archive_glob: packages/openhacker/dist/openhacker-darwin-x64.zip
           - os: ubuntu-latest
             label: Linux x64
             binary_path: packages/openhacker/dist/openhacker
             archive_glob: packages/openhacker/dist/openhacker-linux-x64.tar.gz
+          - os: ubuntu-24.04-arm
+            label: Linux arm64
+            binary_path: packages/openhacker/dist/openhacker
+            archive_glob: packages/openhacker/dist/openhacker-linux-arm64.tar.gz
           - os: windows-latest
             label: Windows x64
             binary_path: packages/openhacker/dist/openhacker.exe
@@ -94,5 +102,7 @@ jobs:
           generate_release_notes: true
           files: |
             dist-artifacts/openhacker-darwin-arm64.zip
+            dist-artifacts/openhacker-darwin-x64.zip
+            dist-artifacts/openhacker-linux-arm64.tar.gz
             dist-artifacts/openhacker-linux-x64.tar.gz
             dist-artifacts/openhacker-windows-x64.zip
