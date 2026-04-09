@@ -26,8 +26,8 @@ export default async function Image() {
           fontFamily: "GeistPixelSquare",
         }}
       >
-        <div style={{ fontSize: 80, fontWeight: "bold" }}>openhacker.ai</div>
-        <div style={{ fontSize: 32, marginTop: 16 }}>&gt; hacking soon</div>
+        <div style={{ fontSize: 120, fontWeight: 900 }}>openhacker.ai</div>
+        <div style={{ fontSize: 48, fontWeight: 900, marginTop: 20 }}>&gt; hacking soon</div>
       </div>
     ),
     {
