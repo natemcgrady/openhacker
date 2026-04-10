@@ -1,13 +1,14 @@
 import { createCliRenderer } from "@opentui/core"
 
-import { createLandingPage } from "./app"
+import { mountLandingPage } from "./app"
 
 export async function runOpenHacker(): Promise<void> {
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
+    backgroundColor: "#000000",
   })
 
-  renderer.root.add(createLandingPage())
+  mountLandingPage(renderer)
 
   await new Promise<never>(() => {})
 }
