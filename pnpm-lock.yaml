@@ -14,16 +14,13 @@ importers:
         specifier: ^1.7.2
         version: 1.7.2(next@16.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7))
       next:
-        specifier: latest
+        specifier: ^16.2.9
         version: 16.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      openhacker:
-        specifier: workspace:*
-        version: link:../../packages/openhacker
       react:
-        specifier: latest
+        specifier: ^19.2.0
         version: 19.2.7
       react-dom:
-        specifier: latest
+        specifier: ^19.2.0
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@types/node':
@@ -36,17 +33,7 @@ importers:
         specifier: 6.0.2
         version: 6.0.2
 
-  packages/cli:
-    dependencies:
-      openhacker:
-        specifier: workspace:*
-        version: link:../openhacker
-
-  packages/openhacker:
-    devDependencies:
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
+  packages/cli: {}
 
 packages:
 

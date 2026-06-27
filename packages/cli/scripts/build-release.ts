@@ -21,6 +21,7 @@ const distDir = path.join(packageDir, "dist")
 const binaryName = process.platform === "win32" ? "openhacker.exe" : "openhacker"
 const binaryPath = path.join(distDir, binaryName)
 
+// Platform/arch naming must stay in sync with the `install` script at the repo root.
 function getPlatform(): SupportedPlatform {
   switch (process.platform) {
     case "darwin":

@@ -15,14 +15,10 @@
   ],
   "scripts": {
     "dev": "bun run ./src/cli.ts",
-    "start": "bun run ./src/cli.ts",
     "build:binary": "bun run ./scripts/build-release.ts --binary-only",
     "build:release": "bun run ./scripts/build-release.ts"
   },
   "engines": {
     "bun": ">=1.3.0"
-  },
-  "dependencies": {
-    "openhacker": "workspace:*"
   }
 }
