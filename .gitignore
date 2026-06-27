@@ -1,5 +1,6 @@
 .vercel
 .next
 node_modules
-packages/openhacker/dist
+packages/cli/dist
+**/next-env.d.ts
 tsconfig.tsbuildinfo

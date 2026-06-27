@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import { GeistPixelSquare } from "geist/font/pixel";
+import { MESSAGE } from "openhacker";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://openhacker.ai"),
-  title: "openhacker.ai",
-  description: "hacking soon",
+  title: "Openhacker",
+  description: MESSAGE,
   openGraph: {
-    title: "openhacker.ai",
-    description: "hacking soon",
+    title: "Openhacker",
+    description: MESSAGE,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "openhacker.ai",
-    description: "hacking soon",
+    title: "Openhacker",
+    description: MESSAGE,
   },
 };
 
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html>
+    <html lang="en">
       <body className={GeistPixelSquare.className}>{children}</body>
     </html>
   );

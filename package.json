@@ -1,21 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "openhacker:dev": "pnpm --filter openhacker dev",
-    "openhacker:build": "pnpm --filter openhacker build:release"
-  },
-  "dependencies": {
-    "geist": "^1.7.2",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {
-    "@types/node": "25.5.2",
-    "@types/react": "19.2.14",
-    "typescript": "6.0.2"
+    "dev": "pnpm --filter @openhacker/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @openhacker/web start",
+    "cli:dev": "pnpm --filter @openhacker/cli dev",
+    "cli:build": "pnpm --filter @openhacker/cli build:release"
   }
 }

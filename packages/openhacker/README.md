@@ -1,15 +1,9 @@
 # openhacker
 
-Minimal OpenTUI scaffold for the `openhacker` CLI.
+Core npm package for Openhacker.
 
-## Run locally
+```ts
+import { MESSAGE } from "openhacker";
 
-```bash
-pnpm --filter openhacker dev
-```
-
-## Build a standalone release
-
-```bash
-pnpm --filter openhacker build:release
+console.log(MESSAGE); // Openhacker - hacking soon
 ```

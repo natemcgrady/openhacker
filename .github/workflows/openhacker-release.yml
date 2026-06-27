@@ -24,24 +24,24 @@ jobs:
         include:
           - os: macos-14
             label: macOS arm64
-            binary_path: packages/openhacker/dist/openhacker
-            archive_glob: packages/openhacker/dist/openhacker-darwin-arm64.zip
+            binary_path: packages/cli/dist/openhacker
+            archive_glob: packages/cli/dist/openhacker-darwin-arm64.zip
           - os: macos-13
             label: macOS x64
-            binary_path: packages/openhacker/dist/openhacker
-            archive_glob: packages/openhacker/dist/openhacker-darwin-x64.zip
+            binary_path: packages/cli/dist/openhacker
+            archive_glob: packages/cli/dist/openhacker-darwin-x64.zip
           - os: ubuntu-latest
             label: Linux x64
-            binary_path: packages/openhacker/dist/openhacker
-            archive_glob: packages/openhacker/dist/openhacker-linux-x64.tar.gz
+            binary_path: packages/cli/dist/openhacker
+            archive_glob: packages/cli/dist/openhacker-linux-x64.tar.gz
           - os: ubuntu-24.04-arm
             label: Linux arm64
-            binary_path: packages/openhacker/dist/openhacker
-            archive_glob: packages/openhacker/dist/openhacker-linux-arm64.tar.gz
+            binary_path: packages/cli/dist/openhacker
+            archive_glob: packages/cli/dist/openhacker-linux-arm64.tar.gz
           - os: windows-latest
             label: Windows x64
-            binary_path: packages/openhacker/dist/openhacker.exe
-            archive_glob: packages/openhacker/dist/openhacker-windows-x64.zip
+            binary_path: packages/cli/dist/openhacker.exe
+            archive_glob: packages/cli/dist/openhacker-windows-x64.zip
 
     steps:
       - name: Check out repository
@@ -67,7 +67,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build release archive
-        run: pnpm --filter openhacker build:release
+        run: pnpm --filter @openhacker/cli build:release
 
       - name: Smoke test local installer
         shell: bash

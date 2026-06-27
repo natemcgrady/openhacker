@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styles from "./page.module.css";
 
 export default function Page() {
   const from = "coming";
@@ -30,11 +29,11 @@ export default function Page() {
   }, []);
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>OpenHacker</h1>
-      <p className={styles.subtitle}>
-        &gt; <span className={styles.typed}>{text}</span> soon
+    <main className="container">
+      <h1 className="title">Openhacker</h1>
+      <p className="subtitle">
+        &gt; <span className="typed">{text}</span> soon
       </p>
-    </div>
+    </main>
   );
 }

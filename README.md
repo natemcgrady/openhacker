@@ -1,20 +1,24 @@
-# openhacker
+# Openhacker
 
-Minimal OpenTUI-based `openhacker` CLI.
+Monorepo for Openhacker.
 
-## Local dev
+## Packages
+
+| Package | Description |
+| --- | --- |
+| [`apps/web`](./apps/web) | Web UI |
+| [`packages/cli`](./packages/cli) | CLI tool |
+| [`packages/openhacker`](./packages/openhacker) | npm package |
+
+## Development
 
 ```bash
-pnpm openhacker:dev
+pnpm install
+pnpm dev          # start the web UI
+pnpm cli:dev      # run the CLI
 ```
 
-## Build a release archive
-
-```bash
-pnpm openhacker:build
-```
-
-## Install like OpenCode
+## Install CLI from releases
 
 ```bash
 curl -fsSL https://openhacker.ai/install | bash

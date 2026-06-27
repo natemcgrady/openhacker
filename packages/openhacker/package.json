@@ -1,28 +1,22 @@
 {
   "name": "openhacker",
   "version": "0.0.0",
-  "description": "A minimal OpenTUI landing screen for OpenHacker",
+  "description": "Openhacker core package",
   "license": "UNLICENSED",
   "type": "module",
-  "bin": {
-    "openhacker": "./bin/openhacker"
+  "exports": {
+    ".": "./src/index.ts"
   },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "files": [
-    "bin",
-    "scripts",
     "src",
     "README.md"
   ],
   "scripts": {
-    "dev": "bun run ./src/cli.ts",
-    "start": "bun run ./src/cli.ts",
-    "build:binary": "bun run ./scripts/build-release.ts --binary-only",
-    "build:release": "bun run ./scripts/build-release.ts"
+    "build": "tsc --noEmit"
   },
-  "engines": {
-    "bun": ">=1.3.0"
-  },
-  "dependencies": {
-    "@opentui/core": "^0.1.97"
+  "devDependencies": {
+    "typescript": "6.0.2"
   }
 }
