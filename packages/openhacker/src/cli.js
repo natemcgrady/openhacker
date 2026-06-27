@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { cp, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +19,36 @@ const EXCLUDE = new Set([
   ".vercel",
   ".turbo",
 ]);
+
+// Written into scaffolded projects directly rather than shipped as a template
+// file, because npm renames a packaged `.gitignore` to `.npmignore` on publish.
+const GITIGNORE = `# dependencies
+node_modules
+
+# next.js
+.next
+next-env.d.ts
+
+# eve build artifacts
+.eve
+.output
+
+# vercel / turbo
+.vercel
+.turbo
+
+# typescript
+tsconfig.tsbuildinfo
+
+# env files (keep the example)
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+*.log
+`;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,7 +99,73 @@ function shouldCopyTemplatePath(src, root) {
   );
 }
 
-async function init(targetArg) {
+function runStep(command, args, cwd, { quiet = false } = {}) {
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: quiet ? "ignore" : "inherit",
+    shell: process.platform === "win32",
+  });
+
+  return !result.error && result.status === 0;
+}
+
+function hasCommand(command) {
+  const probe = process.platform === "win32" ? "where" : "which";
+  const result = spawnSync(probe, [command], { stdio: "ignore", shell: process.platform === "win32" });
+  return !result.error && result.status === 0;
+}
+
+function isInsideGitRepo(cwd) {
+  const result = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
+    cwd,
+    stdio: "ignore",
+    shell: process.platform === "win32",
+  });
+  return !result.error && result.status === 0;
+}
+
+async function installDependencies(dest) {
+  if (!hasCommand("pnpm")) {
+    console.log(`${MUTED}pnpm not found \u2014 skipping install. Run \`pnpm install\` manually.${NC}`);
+    return false;
+  }
+
+  console.log(`\n${MUTED}Installing dependencies with pnpm\u2026${NC}`);
+  // --ignore-workspace keeps the install self-contained: without it, pnpm walks
+  // up to a parent pnpm-workspace.yaml (e.g. when scaffolding inside a monorepo)
+  // and installs that workspace instead of the new project's node_modules.
+  const ok = runStep("pnpm", ["install", "--ignore-workspace"], dest);
+  if (!ok) {
+    console.log(`${RED}pnpm install failed.${NC} ${MUTED}You can re-run it inside the project.${NC}`);
+  }
+  return ok;
+}
+
+async function initGitRepo(dest) {
+  if (!hasCommand("git")) {
+    console.log(`${MUTED}git not found \u2014 skipping repository init.${NC}`);
+    return false;
+  }
+
+  if (isInsideGitRepo(dest)) {
+    console.log(`${MUTED}Already inside a git repository \u2014 skipping git init.${NC}`);
+    return false;
+  }
+
+  const initialized =
+    runStep("git", ["init"], dest, { quiet: true }) &&
+    runStep("git", ["add", "-A"], dest, { quiet: true }) &&
+    runStep("git", ["commit", "-m", "Initial commit from OpenHacker"], dest, { quiet: true });
+
+  if (initialized) {
+    console.log(`${MUTED}Initialized a git repository.${NC}`);
+  } else {
+    console.log(`${MUTED}Could not create the initial git commit \u2014 you can do it manually.${NC}`);
+  }
+  return initialized;
+}
+
+async function init(targetArg, { skipInstall = false, skipGit = false } = {}) {
   const template = await resolveTemplateDir();
   if (!(await exists(path.join(template, "agent", "agent.ts")))) {
     console.error(`${RED}Could not find the instance template at ${template}.${NC}`);
@@ -94,10 +191,22 @@ async function init(targetArg) {
   pkg.private = true;
   await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-  console.log(`${ORANGE}\u2713${NC} OpenHacker instance ready.\n`);
+  // Write before git init so the initial commit doesn't include node_modules/.env.
+  if (!(await exists(path.join(dest, ".gitignore")))) {
+    await writeFile(path.join(dest, ".gitignore"), GITIGNORE);
+  }
+
+  const installed = skipInstall ? false : await installDependencies(dest);
+  if (!skipGit) {
+    await initGitRepo(dest);
+  }
+
+  console.log(`\n${ORANGE}\u2713${NC} OpenHacker instance ready.\n`);
   console.log("Next steps:\n");
   console.log(`  cd ${path.relative(process.cwd(), dest) || "."}`);
-  console.log("  pnpm install");
+  if (skipInstall || !installed) {
+    console.log("  pnpm install");
+  }
   console.log("  pnpm dev                 # run locally\n");
   console.log(`${MUTED}Deploy: push to a git repo and import it into Vercel (deploys as one project).`);
   console.log(`Add a Vercel KV / Upstash Redis integration to persist findings. See README.md.${NC}\n`);
@@ -110,6 +219,9 @@ function usage() {
   console.log("  openhacker init [dir]   Same as above");
   console.log("  openhacker --help       Show help");
   console.log("  openhacker --version    Show version\n");
+  console.log("Options:");
+  console.log("  --skip-install          Don't run pnpm install");
+  console.log("  --skip-git              Don't create a git repository\n");
 }
 
 async function version() {
@@ -118,7 +230,36 @@ async function version() {
 }
 
 export async function run(args = process.argv.slice(2)) {
-  const [command, target, ...rest] = args;
+  const options = { skipInstall: false, skipGit: false };
+  const positionals = [];
+
+  for (const arg of args) {
+    switch (arg) {
+      case "--skip-install":
+        options.skipInstall = true;
+        break;
+      case "--skip-git":
+        options.skipGit = true;
+        break;
+      case "-h":
+      case "--help":
+        usage();
+        return;
+      case "-v":
+      case "--version":
+        await version();
+        return;
+      default:
+        if (arg.startsWith("-")) {
+          console.error(`${RED}Unknown option: ${arg}${NC}\n`);
+          usage();
+          process.exit(1);
+        }
+        positionals.push(arg);
+    }
+  }
+
+  const [command, target, ...rest] = positionals;
 
   if (rest.length > 0) {
     console.error(`${RED}Too many arguments.${NC}\n`);
@@ -126,27 +267,10 @@ export async function run(args = process.argv.slice(2)) {
     process.exit(1);
   }
 
-  switch (command) {
-    case undefined:
-      await init();
-      break;
-    case "init":
-      await init(target);
-      break;
-    case "-h":
-    case "--help":
-      usage();
-      break;
-    case "-v":
-    case "--version":
-      await version();
-      break;
-    default:
-      if (command.startsWith("-")) {
-        console.error(`${RED}Unknown option: ${command}${NC}\n`);
-        usage();
-        process.exit(1);
-      }
-      await init(command);
+  if (command === "init") {
+    await init(target, options);
+    return;
   }
+
+  await init(command, options);
 }

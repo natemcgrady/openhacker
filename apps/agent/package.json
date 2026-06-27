@@ -13,18 +13,17 @@
     "eve:info": "eve info"
   },
   "dependencies": {
-    "@upstash/redis": "^1.38.0",
     "ai": "^7.0.3",
     "eve": "^0.16.2",
     "next": "^16.2.9",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "zod": "^4.4.3"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@types/node": "25.5.2",
     "@types/react": "19.2.14",
     "@types/react-dom": "^19.2.3",
+    "microsandbox": "^0.6.0",
     "typescript": "6.0.2"
   }
 }

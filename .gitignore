@@ -1,7 +1,6 @@
 .vercel
 .next
 node_modules
-packages/cli/dist
 packages/openhacker/templates
 **/next-env.d.ts
 tsconfig.tsbuildinfo
@@ -10,3 +9,4 @@ tsconfig.tsbuildinfo
 .eve
 .output
 .env*
+!.env.example
