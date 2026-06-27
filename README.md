@@ -18,7 +18,7 @@ remediation PRs.
 
 ```bash
 # scaffold a deployable instance (uses apps/agent as the template)
-pnpm init my-instance        # or: npx openhacker init my-instance
+npx openhacker my-instance   # or from this repo: pnpm run init -- my-instance
 
 cd my-instance
 pnpm install

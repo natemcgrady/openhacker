@@ -1,9 +1,14 @@
 # openhacker
 
-hacking soon
+Scaffold a self-hosted OpenHacker security agent.
 
-```ts
-import { MESSAGE } from "openhacker";
+## Create an instance
 
-console.log(MESSAGE); // Openhacker - hacking soon
+```bash
+npx openhacker my-instance
+cd my-instance
+pnpm install
+pnpm dev
 ```
+
+Running `npx openhacker` with no arguments creates `./openhacker`.
