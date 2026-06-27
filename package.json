@@ -5,6 +5,10 @@
     "build": "pnpm -r build",
     "start": "pnpm --filter @openhacker/web start",
     "cli:dev": "pnpm --filter @openhacker/cli dev",
-    "cli:build": "pnpm --filter @openhacker/cli build:release"
+    "cli:build": "pnpm --filter @openhacker/cli build:release",
+    "agent:dev": "pnpm --filter @openhacker/agent dev",
+    "agent:build": "pnpm --filter @openhacker/agent build",
+    "agent:info": "pnpm --filter @openhacker/agent eve:info",
+    "init": "bun run packages/cli/src/cli.ts init"
   }
 }
