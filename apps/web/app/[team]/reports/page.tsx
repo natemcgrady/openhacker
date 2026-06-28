@@ -31,7 +31,7 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
         <h1>Agent findings history</h1>
         <p className="lede">
           Every completed Eve run publishes a report here with the findings that
-          came back from your customer-deployed agents.
+          came back from your customer-deployed agent.
         </p>
       </section>
 

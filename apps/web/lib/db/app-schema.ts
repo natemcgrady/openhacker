@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -55,6 +55,9 @@ export const agentToken = pgTable(
   },
   (table) => [
     index("agentToken_organizationId_idx").on(table.organizationId),
+    uniqueIndex("agentToken_activeOrganizationId_uidx")
+      .on(table.organizationId)
+      .where(sql`${table.revokedAt} is null`),
     uniqueIndex("agentToken_tokenHash_uidx").on(table.tokenHash),
   ],
 );

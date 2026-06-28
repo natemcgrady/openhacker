@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { AgentTokenPanel } from "../../components/agent-token-panel";
 import { RunScanForm } from "../../components/run-scan-form";
 import {
@@ -22,13 +22,38 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const { team } = await params;
   const { organization } = await getTeamPageContext(team);
 
-  const [
-    projects,
-    latestReports,
-    recentFindings,
-    recentRuns,
-    activeTokens,
-  ] = await Promise.all([
+  const [activeAgent] = await db
+    .select()
+    .from(agentToken)
+    .where(
+      and(
+        eq(agentToken.organizationId, organization.id),
+        isNull(agentToken.revokedAt),
+      ),
+    )
+    .orderBy(desc(agentToken.createdAt))
+    .limit(1);
+
+  if (!activeAgent) {
+    return (
+      <section className="panel dashboard-card">
+        <div className="card-heading">
+          <div>
+            <p className="eyebrow">Agent setup</p>
+            <h1>Configure your team agent</h1>
+          </div>
+        </div>
+        <p className="lede">
+          Deploy the headless Eve agent, generate a team token, and add it to
+          your agent project as <code>OPENHACKER_TOKEN</code>. Once configured,
+          this page becomes your findings dashboard.
+        </p>
+        <AgentTokenPanel hasAgent={false} team={team} />
+      </section>
+    );
+  }
+
+  const [projects, latestReports, recentFindings, recentRuns] = await Promise.all([
     db
       .select()
       .from(project)
@@ -65,15 +90,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
       .where(eq(scanRun.organizationId, organization.id))
       .orderBy(desc(scanRun.requestedAt))
       .limit(5),
-    db
-      .select()
-      .from(agentToken)
-      .where(eq(agentToken.organizationId, organization.id))
-      .orderBy(desc(agentToken.createdAt))
-      .limit(5),
   ]);
 
-  const visibleTokens = activeTokens.filter((token) => !token.revokedAt);
   const severityCounts = countSeverities(
     recentFindings.map((item) => item.finding.severity),
   );
@@ -90,7 +108,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
         <h1>{organization.name}</h1>
         <p className="lede">
           Connect repositories, queue Eve scans, and review findings reported by
-          agents running in your own network.
+          the agent running in your own network.
         </p>
       </section>
 
@@ -112,11 +130,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
             {pendingRuns.length} pending, {runningRuns.length} running
           </p>
         </article>
-        <article className="panel metric-card">
-          <span>Agents</span>
-          <strong>{visibleTokens.length}</strong>
-          <p>Active platform tokens</p>
-        </article>
       </section>
 
       <section className="dashboard-grid">
@@ -128,16 +141,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
             </div>
           </div>
           <RunScanForm team={team} />
-        </article>
-
-        <article className="panel dashboard-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Agent connection</p>
-              <h2>Connect local agents</h2>
-            </div>
-          </div>
-          <AgentTokenPanel team={team} />
         </article>
       </section>
 
@@ -267,14 +270,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
               </div>
             ))}
           </div>
-        </article>
-        <article className="panel dashboard-card">
-          <h2>Connection model</h2>
-          <p className="muted">
-            Agents authenticate with a team token, poll openhacker.ai for work,
-            run scans from the customer network, and post results back over
-            outbound HTTPS.
-          </p>
         </article>
       </section>
     </>
