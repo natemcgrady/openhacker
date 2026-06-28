@@ -1,8 +1,26 @@
 "use client";
 
-import { type SyntheticEvent, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type SubmitEvent,
+} from "react";
 import { useEveAgent } from "eve/react";
+import { CircleAlert } from "lucide-react";
 
+import { AgentReport } from "@/components/agent-report";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { extractLatestAssistantReport } from "@/lib/extract-latest-assistant-report";
 import { validateGitHubRepository } from "@/lib/repository";
 
 export default function Home() {
@@ -10,81 +28,101 @@ export default function Home() {
   const [error, setError] = useState("");
   const agent = useEveAgent();
 
-  const busy = agent.status === "submitted" || agent.status === "streaming";
+  const scanning = agent.status === "submitted" || agent.status === "streaming";
+  const hasAgentError = agent.status === "error";
 
-  function onSubmit(e: SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (busy) return;
+  const report = useMemo(() => {
+    if (scanning) return "";
+    return extractLatestAssistantReport(agent.data.messages);
+  }, [agent.data.messages, scanning]);
 
-    const validation = validateGitHubRepository(repo);
-    if (!validation.ok) {
-      setError(validation.error);
-      return;
-    }
+  const displayError = useMemo(() => {
+    if (error) return error;
+    if (hasAgentError) return String(agent.error ?? "Something went wrong.");
+    return "";
+  }, [error, hasAgentError, agent.error]);
 
-    setError("");
-    agent.reset();
-    agent.send({
-      message: `Analyze the GitHub repository ${validation.repository} for security vulnerabilities. Reply with only the final report.`,
-    });
-  }
+  const onRepoChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setRepo(e.target.value);
+    setError((prev) => (prev ? "" : prev));
+  }, []);
 
-  const reply = [...agent.data.messages]
-    .reverse()
-    .find((m) => m.role === "assistant");
+  const onSubmit = useCallback(
+    (e: SubmitEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (scanning) return;
 
-  const parts = reply?.parts ?? [];
-  const lastStep = parts.reduce<number | undefined>((max, p) => {
-    const idx = "stepIndex" in p ? p.stepIndex : undefined;
-    if (typeof idx !== "number") return max;
-    return max === undefined ? idx : Math.max(max, idx);
-  }, undefined);
+      const validation = validateGitHubRepository(repo);
+      if (!validation.ok) {
+        setError(validation.error);
+        return;
+      }
 
-  let result = "";
-  for (const p of parts) {
-    if (p.type !== "text") continue;
-    if (lastStep !== undefined && p.stepIndex !== lastStep) continue;
-    result += p.text;
-  }
+      setError("");
+      agent.reset();
+      agent.send({
+        message: `Analyze the GitHub repository ${validation.repository} for security vulnerabilities.`,
+      });
+    },
+    [agent, repo, scanning],
+  );
 
   return (
-    <main className="container">
-      <h1>
-        open<span>hacker</span>
-      </h1>
-      <p className="sub">
-        Paste a GitHub repo and the agent will analyze it for vulnerabilities.
-      </p>
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16">
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          openhacker
+        </h1>
+      </header>
 
-      <form className="ask" onSubmit={onSubmit}>
-        <input
-          type="text"
-          value={repo}
-          onChange={(e) => setRepo(e.target.value)}
-          placeholder="owner/name or https://github.com/owner/name"
-          aria-label="GitHub repository"
-        />
-        <button type="submit" disabled={busy || !repo.trim()}>
-          {busy ? "Analyzing…" : "Analyze"}
-        </button>
-      </form>
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardDescription>owner/name or full GitHub URL</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-3 sm:grid-cols-[1fr_auto]"
+            onSubmit={onSubmit}
+          >
+            <Input
+              type="text"
+              value={repo}
+              onChange={onRepoChange}
+              placeholder="owner/repo"
+              aria-label="GitHub repository"
+              aria-invalid={Boolean(error)}
+            />
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={scanning || !repo.trim()}
+            >
+              {scanning ? "Running" : "Analyze"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      {result || busy ? (
-        <section className="reply">
-          {result ? <p className="text">{result}</p> : null}
-          {busy && !result ? (
-            <p className="hacking">
-              hacking
-              <span className="dots" aria-hidden />
-            </p>
-          ) : null}
-        </section>
+      {scanning || report ? (
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardDescription>Report</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {report ? (
+              <AgentReport markdown={report} />
+            ) : (
+              <p className="text-sm text-muted-foreground">hacking...</p>
+            )}
+          </CardContent>
+        </Card>
       ) : null}
 
-      {error || agent.status === "error" ? (
-        <div className="banner">
-          {error || String(agent.error ?? "Something went wrong.")}
-        </div>
+      {displayError ? (
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertDescription>{displayError}</AlertDescription>
+        </Alert>
       ) : null}
     </main>
   );
