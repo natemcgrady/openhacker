@@ -229,12 +229,10 @@ async function init(targetArg, { skipInstall = false, skipGit = false } = {}) {
   );
   console.log("  pnpm eve:info            # verify the headless Eve agent\n");
   console.log("  pnpm dev                 # optional local Eve service\n");
+  console.log("\nDeploy to Vercel, then register the OpenHacker channel URL:");
+  console.log("  https://your-agent.vercel.app/channels/openhacker\n");
   console.log(
-    "\nDeploy to Vercel, then configure the Vercel Connect connector:",
-  );
-  console.log("  custom/openhacker\n");
-  console.log(
-    `${MUTED}Store the openhacker.ai agent credential in that connector. The agent accepts authenticated OpenHacker channel deliveries.${NC}`,
+    `${MUTED}openhacker.ai will POST scan requests directly to that channel.${NC}`,
   );
   console.log(`${MUTED}See README.md for deployment and local model configuration.${NC}\n`);
 }

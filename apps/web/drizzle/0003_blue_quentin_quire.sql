@@ -1,0 +1,1 @@
+ALTER TABLE "agent_token" ADD COLUMN "agent_channel_url" text;

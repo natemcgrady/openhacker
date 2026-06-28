@@ -46,6 +46,7 @@ export const agentToken = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     tokenHash: text("token_hash").notNull(),
+    agentChannelUrl: text("agent_channel_url"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

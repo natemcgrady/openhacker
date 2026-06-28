@@ -34,7 +34,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .orderBy(desc(agentToken.createdAt))
     .limit(1);
 
-  if (!activeAgent) {
+  if (!activeAgent?.agentChannelUrl) {
     return (
       <section className="panel dashboard-card">
         <div className="card-heading">
@@ -44,12 +44,14 @@ export default async function TeamPage({ params }: TeamPageProps) {
           </div>
         </div>
         <p className="lede">
-          Deploy the headless Eve agent, generate a connector credential, and
-          store it in the project-linked Vercel Connect connector{" "}
-          <code>custom/openhacker</code>. Once configured, this page becomes
-          your findings dashboard.
+          Deploy the headless Eve agent and register its OpenHacker channel URL
+          so OpenHacker can send scans directly to the agent.
         </p>
-        <AgentTokenPanel hasAgent={false} team={team} />
+        <AgentTokenPanel
+          agentChannelUrl={activeAgent?.agentChannelUrl}
+          hasAgent={!!activeAgent}
+          team={team}
+        />
       </section>
     );
   }

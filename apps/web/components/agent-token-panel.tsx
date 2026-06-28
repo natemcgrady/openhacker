@@ -4,46 +4,43 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type AgentTokenPanelProps = {
+  readonly agentChannelUrl?: string | null;
   readonly hasAgent: boolean;
   readonly team: string;
 };
 
-export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
+export function AgentTokenPanel({
+  agentChannelUrl,
+  hasAgent,
+  team,
+}: AgentTokenPanelProps) {
   const router = useRouter();
-  const [token, setToken] = useState("");
+  const [channelUrl, setChannelUrl] = useState(agentChannelUrl ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [hasCopiedCredential, setHasCopiedCredential] = useState(false);
 
-  async function onSubmit() {
+  async function onSubmit(formData: FormData) {
     setError(null);
+    setMessage(null);
     setIsGenerating(true);
-    setHasCopiedCredential(false);
 
     const response = await fetch(`/api/teams/${team}/agent-tokens`, {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        agentChannelUrl: String(formData.get("agentChannelUrl") ?? ""),
+      }),
     });
     const payload = await response.json().catch(() => null);
     setIsGenerating(false);
 
     if (!response.ok) {
-      setError(payload?.error ?? "Could not create a connector credential.");
+      setError(payload?.error ?? "Could not register this agent channel.");
       return;
     }
 
-    setToken(payload.token);
-  }
-
-  async function copyCredential() {
-    if (!token || !navigator.clipboard) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(token);
-    setHasCopiedCredential(true);
-  }
-
-  function continueToDashboard() {
+    setMessage("Agent channel registered. OpenHacker can now send scans directly.");
     router.refresh();
   }
 
@@ -51,44 +48,29 @@ export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
     <div className="agent-token-panel">
       <p className="muted">
         {hasAgent
-          ? "This team already has an agent connector credential. Generating a new credential rotates the existing one."
-          : "Generate one credential for the OpenHacker Vercel Connect connector."}
+          ? "This team already has an agent registration. Updating it replaces the channel URL."
+          : "Register the deployed OpenHacker channel for this team."}
       </p>
       <form action={onSubmit} className="token-form">
+        <label>
+          <span>Agent channel URL</span>
+          <input
+            name="agentChannelUrl"
+            onChange={(event) => setChannelUrl(event.target.value)}
+            placeholder="https://your-agent.vercel.app/channels/openhacker"
+            value={channelUrl}
+          />
+        </label>
         <button className="button" disabled={isGenerating} type="submit">
           {isGenerating
-            ? "Generating..."
+            ? "Registering..."
             : hasAgent
-              ? "Rotate connector credential"
-              : "Generate connector credential"}
+              ? "Update agent channel"
+              : "Register agent channel"}
         </button>
       </form>
+      {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      {token ? (
-        <div className="token-reveal">
-          <p className="eyebrow">Shown once</p>
-          <input aria-label="Connector credential" readOnly value={token} />
-          <button className="button" onClick={copyCredential} type="button">
-            {hasCopiedCredential ? "Copied credential" : "Copy connector credential"}
-          </button>
-          {hasCopiedCredential ? (
-            <button
-              className="button primary"
-              onClick={continueToDashboard}
-              type="button"
-            >
-              Continue to dashboard
-            </button>
-          ) : null}
-          <p className="muted">
-            Store this credential in the project-linked Vercel Connect connector{" "}
-            <code>custom/openhacker</code> for the Vercel project created by{" "}
-            <strong>npx openhacker</strong>. The deployed headless agent accepts
-            authenticated OpenHacker channel deliveries and publishes results
-            back to this team.
-          </p>
-        </div>
-      ) : null}
     </div>
   );
 }

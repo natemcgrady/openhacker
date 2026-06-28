@@ -12,7 +12,7 @@ pnpm eve:info
 
 Running `npx openhacker` with no arguments creates `./openhacker`.
 
-Deploy the generated app to Vercel, then configure the project-linked Vercel
-Connect connector `custom/openhacker` with the agent credential generated in
-openhacker.ai. The generated app exposes an authenticated OpenHacker Eve channel
-for platform-delivered scans, with a scheduled poller as a fallback.
+Deploy the generated app to Vercel, then register the deployed OpenHacker
+channel URL in openhacker.ai, for example
+`https://your-agent.vercel.app/channels/openhacker`. The generated app exposes
+that channel for platform-delivered scans.

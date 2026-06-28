@@ -38,7 +38,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (runRecord.claimedByTokenId !== token.id) {
     return NextResponse.json(
-      { error: "This run was not claimed by the current connector credential." },
+      { error: "This run was not claimed by the current agent registration." },
       { status: 403 },
     );
   }

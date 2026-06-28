@@ -1,18 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
-import { defineChannel, POST, WS, type RouteHandlerArgs } from "eve/channels";
+import { defineChannel, POST, type RouteHandlerArgs } from "eve/channels";
 import type { HandleMessageStreamEvent } from "eve/client";
-import {
-  claimRun,
-  formatError,
-  getOpenHackerToken,
-  postRunFailure,
-  postRunResult,
-} from "../platform";
-import {
-  buildScanPrompt,
-  normalizeScanResult,
-  SCAN_OUTPUT_SCHEMA,
-} from "../run-platform-scan";
 
 type OpenHackerChannelState = {
   readonly runId: string | null;
@@ -22,6 +9,7 @@ type OpenHackerChannelState = {
 
 type OpenHackerRunPayload = {
   readonly runId?: string;
+  readonly repository?: string;
   readonly instructions?: string;
   readonly message?: string;
 };
@@ -35,9 +23,83 @@ type OpenHackerAuth = {
 
 type StartRunInput = {
   readonly runId: string;
+  readonly repository: string;
   readonly instructions?: string;
   readonly message?: string;
 };
+
+type StructuredFinding = {
+  readonly severity?: string;
+  readonly title?: string;
+  readonly description?: string;
+  readonly remediation?: string;
+  readonly packageName?: string;
+  readonly packageVersion?: string;
+  readonly advisoryId?: string;
+  readonly filePath?: string;
+  readonly lineStart?: number;
+  readonly lineEnd?: number;
+  readonly fingerprint?: string;
+};
+
+type ScanResult = {
+  readonly markdown: string;
+  readonly findings: readonly StructuredFinding[];
+  readonly title?: string;
+  readonly summary?: string;
+  readonly eveSessionId?: string;
+};
+
+type EveScanOutput = {
+  readonly title?: string;
+  readonly summary?: string;
+  readonly markdown?: string;
+  readonly findings?: readonly StructuredFinding[];
+};
+
+const OPENHACKER_AUTH = {
+  authenticator: "openhacker",
+  principalType: "service",
+  principalId: "openhacker-platform",
+  attributes: {
+    channel: "openhacker",
+  },
+} satisfies OpenHackerAuth;
+
+const SCAN_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    summary: { type: "string" },
+    markdown: { type: "string" },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low", "info"],
+          },
+          title: { type: "string" },
+          description: { type: "string" },
+          remediation: { type: "string" },
+          packageName: { type: "string" },
+          packageVersion: { type: "string" },
+          advisoryId: { type: "string" },
+          filePath: { type: "string" },
+          lineStart: { type: "number" },
+          lineEnd: { type: "number" },
+          fingerprint: { type: "string" },
+        },
+        required: ["severity", "title", "description", "remediation"],
+      },
+    },
+  },
+  required: ["title", "summary", "markdown", "findings"],
+} as const;
 
 export default defineChannel<
   OpenHackerChannelState,
@@ -62,102 +124,41 @@ export default defineChannel<
     };
   },
   routes: [
-    POST("/runs/:runId", async (request, args) => {
-      const auth = await authenticateOpenHackerRequest(request);
+    POST("/channels/openhacker", async (request, args) => {
+      const payload = await readJsonPayload(request);
+      const runId = normalizeString(payload?.runId);
+      const repository = normalizeString(payload?.repository);
 
-      if (auth instanceof Response) {
-        return auth;
+      if (!runId) {
+        return Response.json({ error: "runId is required." }, { status: 400 });
       }
 
-      const payload = await readJsonPayload(request);
-      const started = await startRun(args, auth, {
-        runId: args.params.runId,
+      if (!repository) {
+        return Response.json({ error: "repository is required." }, { status: 400 });
+      }
+
+      const result = await runScan(args, {
+        runId,
+        repository,
         instructions: normalizeString(payload?.instructions),
         message: normalizeString(payload?.message),
       });
 
-      if (!started.ok) {
-        return Response.json({ error: started.error }, { status: started.status });
+      if (!result.ok) {
+        return Response.json({ error: result.error }, { status: result.status });
       }
 
-      return Response.json({
-        runId: started.runId,
-        repository: started.repository,
-        sessionId: started.sessionId,
-        continuationToken: started.continuationToken,
-      });
-    }),
-    WS("/runs/ws", (_request, args) => {
-      let auth: OpenHackerAuth | null = null;
-
-      return {
-        async upgrade(request) {
-          const result = await authenticateOpenHackerRequest(request);
-
-          if (result instanceof Response) {
-            return result;
-          }
-
-          auth = result;
-        },
-        open(peer) {
-          peer.send({ type: "ready" });
-        },
-        async message(peer, message) {
-          if (!auth) {
-            peer.close(1008, "Unauthorized.");
-            return;
-          }
-
-          const payload = parseWebSocketPayload(message);
-
-          if (!payload.runId) {
-            peer.send({ type: "error", error: "runId is required." });
-            return;
-          }
-
-          const started = await startRun(args, auth, payload);
-
-          if (!started.ok) {
-            peer.send({
-              type: "error",
-              runId: payload.runId,
-              error: started.error,
-            });
-            return;
-          }
-
-          peer.send({
-            type: "started",
-            runId: started.runId,
-            repository: started.repository,
-            sessionId: started.sessionId,
-            continuationToken: started.continuationToken,
-          });
-        },
-      };
+      return Response.json(result.payload);
     }),
   ],
 });
 
-async function startRun(
+async function runScan(
   args: RouteHandlerArgs<OpenHackerChannelState>,
-  auth: OpenHackerAuth,
   input: StartRunInput,
 ) {
-  const claimed = await claimRun(input.runId);
-
-  if (!claimed.ok) {
-    return {
-      ok: false as const,
-      status: claimed.skipped ? 503 : 502,
-      error: claimed.error,
-    };
-  }
-
-  const repository = claimed.run.project.fullName;
   const message =
-    input.message || buildOpenHackerPrompt(repository, input.instructions);
+    input.message || buildOpenHackerPrompt(input.repository, input.instructions);
 
   try {
     const session = await args.send(
@@ -166,51 +167,39 @@ async function startRun(
         outputSchema: SCAN_OUTPUT_SCHEMA,
       },
       {
-        auth,
+        auth: OPENHACKER_AUTH,
         continuationToken: input.runId,
         mode: "task",
-        title: `OpenHacker scan ${repository}`,
+        title: `OpenHacker scan ${input.repository}`,
         state: {
           runId: input.runId,
-          repository,
-          projectFullName: claimed.run.project.fullName,
+          repository: input.repository,
+          projectFullName: input.repository,
         },
       },
     );
 
-    args.waitUntil(reportSessionResult(input.runId, repository, session));
+    const { message: resultMessage, result } = await readTerminalResult(session);
 
     return {
       ok: true as const,
-      runId: input.runId,
-      repository,
-      sessionId: session.id,
-      continuationToken: session.continuationToken,
+      payload: {
+        runId: input.runId,
+        repository: input.repository,
+        ...normalizeScanResult(
+          result,
+          resultMessage,
+          input.repository,
+          session.id,
+        ),
+      },
     };
   } catch (error) {
-    await postRunFailure(input.runId, error);
-
     return {
       ok: false as const,
       status: 500,
       error: formatError(error),
     };
-  }
-}
-
-async function reportSessionResult(
-  runId: string,
-  repository: string,
-  session: Awaited<ReturnType<RouteHandlerArgs<OpenHackerChannelState>["send"]>>,
-) {
-  try {
-    const { message, result } = await readTerminalResult(session);
-    await postRunResult(
-      runId,
-      normalizeScanResult(result, message, repository, session.id),
-    );
-  } catch (error) {
-    await postRunFailure(runId, error);
   }
 }
 
@@ -259,85 +248,8 @@ async function readTerminalResult(
   return { message, result };
 }
 
-async function authenticateOpenHackerRequest(request: Request) {
-  const bearerToken = readBearerToken(request);
-
-  if (!bearerToken) {
-    return unauthorizedResponse();
-  }
-
-  const expectedToken = await getOpenHackerToken();
-
-  if (!expectedToken.ok) {
-    return Response.json({ error: expectedToken.error }, { status: 503 });
-  }
-
-  if (!safeTokenEquals(bearerToken, expectedToken.token)) {
-    return unauthorizedResponse();
-  }
-
-  return {
-    authenticator: "openhacker",
-    principalType: "service",
-    principalId: "openhacker-platform",
-    attributes: {
-      connector: "custom/openhacker",
-    },
-  } satisfies OpenHackerAuth;
-}
-
-function readBearerToken(request: Request) {
-  const authorization = request.headers.get("authorization");
-
-  if (!authorization) {
-    return null;
-  }
-
-  const [scheme, token] = authorization.split(/\s+/, 2);
-
-  if (scheme?.toLowerCase() !== "bearer" || !token) {
-    return null;
-  }
-
-  return token;
-}
-
-function safeTokenEquals(actual: string, expected: string) {
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
-
-  return (
-    actualBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(actualBuffer, expectedBuffer)
-  );
-}
-
 async function readJsonPayload(request: Request) {
   return (await request.json().catch(() => null)) as OpenHackerRunPayload | null;
-}
-
-function parseWebSocketPayload(message: {
-  json<T = unknown>(): T;
-}): StartRunInput {
-  let value: unknown;
-
-  try {
-    value = message.json();
-  } catch {
-    return { runId: "" };
-  }
-
-  if (!value || typeof value !== "object") {
-    return { runId: "" };
-  }
-
-  const record = value as Record<string, unknown>;
-
-  return {
-    runId: normalizeString(record.runId),
-    instructions: normalizeString(record.instructions),
-    message: normalizeString(record.message),
-  };
 }
 
 function buildOpenHackerPrompt(repository: string, instructions?: string) {
@@ -348,10 +260,74 @@ function buildOpenHackerPrompt(repository: string, instructions?: string) {
   return `${buildScanPrompt(repository)}\n\nAdditional OpenHacker instructions:\n${instructions}`;
 }
 
-function normalizeString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+function buildScanPrompt(repository: string) {
+  return [
+    `Analyze the GitHub repository ${repository} for security vulnerabilities.`,
+    "Return a concise human-readable markdown report.",
+    "Also satisfy the requested structured output schema with the same findings.",
+    "Use severity values critical, high, medium, low, or info.",
+  ].join("\n");
 }
 
-function unauthorizedResponse() {
-  return Response.json({ error: "Unauthorized." }, { status: 401 });
+function normalizeScanResult(
+  data: unknown,
+  message: string | null | undefined,
+  repository: string,
+  eveSessionId?: string,
+): ScanResult {
+  const output = isEveScanOutput(data) ? data : null;
+  const markdown = normalizeString(output?.markdown) || message || "";
+
+  if (!markdown.trim()) {
+    throw new Error("Eve did not return a report.");
+  }
+
+  const outputFindings = output?.findings;
+  const findings =
+    Array.isArray(outputFindings) && outputFindings.length > 0
+      ? outputFindings
+      : extractStructuredFindings(markdown);
+
+  return {
+    markdown,
+    findings,
+    title:
+      normalizeString(output?.title) ||
+      `Security report for ${repository}`,
+    summary:
+      normalizeString(output?.summary) ||
+      markdown.replace(/\s+/g, " ").slice(0, 240),
+    eveSessionId,
+  };
+}
+
+function extractStructuredFindings(markdown: string): StructuredFinding[] {
+  for (const match of markdown.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    try {
+      const parsed = JSON.parse(match[1]?.trim() ?? "") as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        Array.isArray((parsed as { findings?: unknown }).findings)
+      ) {
+        return (parsed as { findings: StructuredFinding[] }).findings;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
+}
+
+function isEveScanOutput(value: unknown): value is EveScanOutput {
+  return !!value && typeof value === "object";
+}
+
+function formatError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function normalizeString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }

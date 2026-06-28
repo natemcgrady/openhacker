@@ -1,20 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
-import { authenticateAgentRequest } from "../../../../../../lib/agent-auth";
-import {
-  finding,
-  project,
-  report,
-  scanRun,
-} from "../../../../../../lib/db/app-schema";
-import { db } from "../../../../../../lib/db";
-
-type RouteContext = {
-  params: Promise<{
-    runId: string;
-  }>;
-};
+import { finding, project, report, scanRun } from "./db/app-schema";
+import { db } from "./db";
 
 type NormalizedFinding = {
   severity: "critical" | "high" | "medium" | "low" | "info";
@@ -30,24 +17,40 @@ type NormalizedFinding = {
   fingerprint: string;
 };
 
+type StoreScanRunResultInput = {
+  readonly claimedByTokenId: string;
+  readonly organizationId: string;
+  readonly payload: Record<string, unknown>;
+  readonly runId: string;
+};
+
+type MarkScanRunFailedInput = {
+  readonly claimedByTokenId: string;
+  readonly error: unknown;
+  readonly organizationId: string;
+  readonly runId: string;
+};
+
+export type ScanRunResultPersistenceResult =
+  | {
+      readonly ok: true;
+      readonly findingsAccepted: number;
+      readonly report: typeof report.$inferSelect;
+    }
+  | { readonly ok: false; readonly error: string; readonly status: number };
+
 const SEVERITIES = new Set(["critical", "high", "medium", "low", "info"]);
 
-export async function POST(request: Request, context: RouteContext) {
-  const token = await authenticateAgentRequest(request);
-
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  const { runId } = await context.params;
-  const body = await request.json().catch(() => null);
-  const markdown = normalizeString(body?.markdown ?? body?.report ?? "");
+export async function storeScanRunResult({
+  claimedByTokenId,
+  organizationId,
+  payload,
+  runId,
+}: StoreScanRunResultInput): Promise<ScanRunResultPersistenceResult> {
+  const markdown = normalizeString(payload.markdown ?? payload.report ?? "");
 
   if (!markdown) {
-    return NextResponse.json(
-      { error: "Report markdown is required." },
-      { status: 400 },
-    );
+    return { ok: false, error: "Report markdown is required.", status: 400 };
   }
 
   const [runRecord] = await db
@@ -57,48 +60,50 @@ export async function POST(request: Request, context: RouteContext) {
     })
     .from(scanRun)
     .innerJoin(project, eq(scanRun.projectId, project.id))
-    .where(
-      and(eq(scanRun.id, runId), eq(scanRun.organizationId, token.organizationId)),
-    )
+    .where(and(eq(scanRun.id, runId), eq(scanRun.organizationId, organizationId)))
     .limit(1);
 
   if (!runRecord) {
-    return NextResponse.json({ error: "Run not found." }, { status: 404 });
+    return { ok: false, error: "Run not found.", status: 404 };
   }
 
-  if (runRecord.run.claimedByTokenId !== token.id) {
-    return NextResponse.json(
-      { error: "This run was not claimed by the current agent registration." },
-      { status: 403 },
-    );
+  if (runRecord.run.claimedByTokenId !== claimedByTokenId) {
+    return {
+      ok: false,
+      error: "This run was not claimed by the current agent registration.",
+      status: 403,
+    };
   }
 
   if (runRecord.run.status === "completed") {
-    return NextResponse.json(
-      { error: "This run has already been completed." },
-      { status: 409 },
-    );
+    return {
+      ok: false,
+      error: "This run has already been completed.",
+      status: 409,
+    };
   }
 
   if (runRecord.run.status !== "running") {
-    return NextResponse.json(
-      { error: "Only running scans can receive results." },
-      { status: 409 },
-    );
+    return {
+      ok: false,
+      error: "Only running scans can receive results.",
+      status: 409,
+    };
   }
 
-  const findings = normalizeFindings(body?.findings);
+  const findings = normalizeFindings(payload.findings);
   const counts = countSeverities(findings);
   const reportId = randomUUID();
-  const title = normalizeString(body?.title) || `Security report for ${runRecord.project.fullName}`;
+  const title =
+    normalizeString(payload.title) || `Security report for ${runRecord.project.fullName}`;
   const summary =
-    normalizeString(body?.summary) || markdown.replace(/\s+/g, " ").slice(0, 240);
+    normalizeString(payload.summary) || markdown.replace(/\s+/g, " ").slice(0, 240);
 
   const [createdReport] = await db
     .insert(report)
     .values({
       id: reportId,
-      organizationId: token.organizationId,
+      organizationId,
       projectId: runRecord.project.id,
       scanRunId: runRecord.run.id,
       title,
@@ -118,7 +123,7 @@ export async function POST(request: Request, context: RouteContext) {
       .values(
         findings.map((item) => ({
           id: randomUUID(),
-          organizationId: token.organizationId,
+          organizationId,
           projectId: runRecord.project.id,
           scanRunId: runRecord.run.id,
           reportId: createdReport.id,
@@ -144,20 +149,49 @@ export async function POST(request: Request, context: RouteContext) {
       status: "completed",
       completedAt: new Date(),
       errorMessage: null,
-      eveSessionId: normalizeString(body?.eveSessionId) || null,
+      eveSessionId: normalizeString(payload.eveSessionId) || null,
     })
     .where(
       and(
         eq(scanRun.id, runRecord.run.id),
         eq(scanRun.status, "running"),
-        eq(scanRun.claimedByTokenId, token.id),
+        eq(scanRun.claimedByTokenId, claimedByTokenId),
       ),
     );
 
-  return NextResponse.json({
+  return {
+    ok: true,
     report: createdReport,
     findingsAccepted: findings.length,
-  });
+  };
+}
+
+export async function markScanRunFailed({
+  claimedByTokenId,
+  error,
+  organizationId,
+  runId,
+}: MarkScanRunFailedInput) {
+  const message = formatError(error).slice(0, 1000);
+
+  const [updatedRun] = await db
+    .update(scanRun)
+    .set({
+      status: "failed",
+      completedAt: new Date(),
+      errorMessage: message || "The agent could not complete this run.",
+    })
+    .where(
+      and(
+        eq(scanRun.id, runId),
+        eq(scanRun.organizationId, organizationId),
+        eq(scanRun.status, "running"),
+        eq(scanRun.claimedByTokenId, claimedByTokenId),
+      ),
+    )
+    .returning();
+
+  return updatedRun;
 }
 
 function normalizeFindings(value: unknown): NormalizedFinding[] {
@@ -263,4 +297,8 @@ function countSeverities(findings: readonly NormalizedFinding[]) {
     },
     { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
   );
+}
+
+function formatError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

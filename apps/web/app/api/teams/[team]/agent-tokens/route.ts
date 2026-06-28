@@ -20,6 +20,13 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
+  const body = await request.json().catch(() => null);
+  const channelUrl = normalizeAgentChannelUrl(body?.agentChannelUrl);
+
+  if (!channelUrl.ok) {
+    return NextResponse.json({ error: channelUrl.error }, { status: 400 });
+  }
+
   const label = "Team agent";
   const { secret, hash } = createAgentTokenSecret();
 
@@ -40,6 +47,7 @@ export async function POST(request: Request, context: RouteContext) {
         .set({
           label,
           tokenHash: hash,
+          agentChannelUrl: channelUrl.url,
           createdByUserId: teamContext.session.user.id,
           createdAt: new Date(),
           lastUsedAt: null,
@@ -53,6 +61,7 @@ export async function POST(request: Request, context: RouteContext) {
           organizationId: teamContext.organization.id,
           label,
           tokenHash: hash,
+          agentChannelUrl: channelUrl.url,
           createdByUserId: teamContext.session.user.id,
         })
         .returning();
@@ -62,7 +71,49 @@ export async function POST(request: Request, context: RouteContext) {
       token: secret,
       id: savedToken.id,
       label: savedToken.label,
+      agentChannelUrl: savedToken.agentChannelUrl,
     },
     { status: 201 },
   );
+}
+
+function normalizeAgentChannelUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return { ok: false as const, error: "Enter the deployed agent channel URL." };
+  }
+
+  try {
+    const url = new URL(value.trim());
+
+    if (url.username || url.password || url.search || url.hash) {
+      return {
+        ok: false as const,
+        error: "Agent channel URL cannot include credentials, query, or hash.",
+      };
+    }
+
+    if (url.protocol !== "https:" && process.env.NODE_ENV === "production") {
+      return {
+        ok: false as const,
+        error: "Agent channel URL must use HTTPS in production.",
+      };
+    }
+
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return { ok: false as const, error: "Agent channel URL must be HTTP or HTTPS." };
+    }
+
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+
+    if (url.pathname !== "/channels/openhacker") {
+      return {
+        ok: false as const,
+        error: "Agent channel URL must end with /channels/openhacker.",
+      };
+    }
+
+    return { ok: true as const, url: url.toString().replace(/\/$/, "") };
+  } catch {
+    return { ok: false as const, error: "Enter a valid agent channel URL." };
+  }
 }

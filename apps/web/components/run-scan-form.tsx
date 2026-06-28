@@ -32,7 +32,7 @@ export function RunScanForm({ team }: { readonly team: string }) {
     }
 
     setRepository("");
-    setMessage("Scan queued. A connected agent will claim it shortly.");
+    setMessage("Scan completed. The agent response was stored on OpenHacker.");
     router.refresh();
   }
 
