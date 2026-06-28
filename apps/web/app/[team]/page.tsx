@@ -44,9 +44,10 @@ export default async function TeamPage({ params }: TeamPageProps) {
           </div>
         </div>
         <p className="lede">
-          Deploy the headless Eve agent, generate a team token, and add it to
-          your agent project as <code>OPENHACKER_TOKEN</code>. Once configured,
-          this page becomes your findings dashboard.
+          Deploy the headless Eve agent, generate a connector credential, and
+          store it in the project-linked Vercel Connect connector{" "}
+          <code>custom/openhacker</code>. Once configured, this page becomes
+          your findings dashboard.
         </p>
         <AgentTokenPanel hasAgent={false} team={team} />
       </section>

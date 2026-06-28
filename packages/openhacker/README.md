@@ -12,6 +12,7 @@ pnpm eve:info
 
 Running `npx openhacker` with no arguments creates `./openhacker`.
 
-Generate an agent token in openhacker.ai, set `OPENHACKER_TOKEN` on the Vercel
-project, then deploy the generated app. The agent polls openhacker.ai for queued
-repository scans and posts reports back to the platform.
+Deploy the generated app to Vercel, then configure the project-linked Vercel
+Connect connector `custom/openhacker` with the agent credential generated in
+openhacker.ai. The generated app exposes an authenticated OpenHacker Eve channel
+for platform-delivered scans, with a scheduled poller as a fallback.

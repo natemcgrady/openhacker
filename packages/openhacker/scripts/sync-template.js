@@ -18,9 +18,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
 const source = path.resolve(
   process.env.OPENHACKER_TEMPLATE_DIR ??
-    path.join(packageRoot, "../../apps/agent"),
+    path.join(packageRoot, "../../apps/openhacker-agent"),
 );
-const dest = path.join(packageRoot, "templates/agent");
+const dest = path.join(packageRoot, "templates/openhacker-agent");
 
 async function exists(p) {
   try {

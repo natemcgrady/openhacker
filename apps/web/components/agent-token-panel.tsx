@@ -13,12 +13,12 @@ export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [hasCopiedEnv, setHasCopiedEnv] = useState(false);
+  const [hasCopiedCredential, setHasCopiedCredential] = useState(false);
 
   async function onSubmit() {
     setError(null);
     setIsGenerating(true);
-    setHasCopiedEnv(false);
+    setHasCopiedCredential(false);
 
     const response = await fetch(`/api/teams/${team}/agent-tokens`, {
       method: "POST",
@@ -27,22 +27,20 @@ export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
     setIsGenerating(false);
 
     if (!response.ok) {
-      setError(payload?.error ?? "Could not create an agent token.");
+      setError(payload?.error ?? "Could not create a connector credential.");
       return;
     }
 
     setToken(payload.token);
   }
 
-  const envSnippet = token ? `OPENHACKER_TOKEN=${token}` : "";
-
-  async function copyEnvSnippet() {
-    if (!envSnippet || !navigator.clipboard) {
+  async function copyCredential() {
+    if (!token || !navigator.clipboard) {
       return;
     }
 
-    await navigator.clipboard.writeText(envSnippet);
-    setHasCopiedEnv(true);
+    await navigator.clipboard.writeText(token);
+    setHasCopiedCredential(true);
   }
 
   function continueToDashboard() {
@@ -53,28 +51,27 @@ export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
     <div className="agent-token-panel">
       <p className="muted">
         {hasAgent
-          ? "This team already has an agent. Generating a new token rotates the existing agent token."
-          : "Generate one token for the headless Eve agent deployed for this team."}
+          ? "This team already has an agent connector credential. Generating a new credential rotates the existing one."
+          : "Generate one credential for the OpenHacker Vercel Connect connector."}
       </p>
       <form action={onSubmit} className="token-form">
         <button className="button" disabled={isGenerating} type="submit">
           {isGenerating
             ? "Generating..."
             : hasAgent
-              ? "Rotate agent token"
-              : "Generate agent token"}
+              ? "Rotate connector credential"
+              : "Generate connector credential"}
         </button>
       </form>
       {error ? <p className="form-error">{error}</p> : null}
       {token ? (
         <div className="token-reveal">
           <p className="eyebrow">Shown once</p>
-          <input aria-label="Agent token" readOnly value={token} />
-          <pre className="env-snippet">{envSnippet}</pre>
-          <button className="button" onClick={copyEnvSnippet} type="button">
-            {hasCopiedEnv ? "Copied env var" : "Copy Vercel env var"}
+          <input aria-label="Connector credential" readOnly value={token} />
+          <button className="button" onClick={copyCredential} type="button">
+            {hasCopiedCredential ? "Copied credential" : "Copy connector credential"}
           </button>
-          {hasCopiedEnv ? (
+          {hasCopiedCredential ? (
             <button
               className="button primary"
               onClick={continueToDashboard}
@@ -84,10 +81,11 @@ export function AgentTokenPanel({ hasAgent, team }: AgentTokenPanelProps) {
             </button>
           ) : null}
           <p className="muted">
-            Add this environment variable to the Vercel project created by{" "}
-            <strong>npx openhacker</strong>. The deployed headless agent will
-            poll this platform for queued scans and publish results back to this
-            team.
+            Store this credential in the project-linked Vercel Connect connector{" "}
+            <code>custom/openhacker</code> for the Vercel project created by{" "}
+            <strong>npx openhacker</strong>. The deployed headless agent accepts
+            authenticated OpenHacker channel deliveries and publishes results
+            back to this team.
           </p>
         </div>
       ) : null}

@@ -65,10 +65,10 @@ async function resolveTemplateDir() {
   }
 
   candidates.push(
-    // npm package layout: packages/openhacker/src -> packages/openhacker/templates/agent
-    path.resolve(here, "../templates/agent"),
-    // monorepo layout: packages/openhacker/src -> repo root -> apps/agent
-    path.resolve(here, "../../../apps/agent"),
+    // npm package layout: packages/openhacker/src -> packages/openhacker/templates/openhacker-agent
+    path.resolve(here, "../templates/openhacker-agent"),
+    // monorepo layout: packages/openhacker/src -> repo root -> apps/openhacker-agent
+    path.resolve(here, "../../../apps/openhacker-agent"),
   );
 
   for (const candidate of candidates) {
@@ -230,11 +230,11 @@ async function init(targetArg, { skipInstall = false, skipGit = false } = {}) {
   console.log("  pnpm eve:info            # verify the headless Eve agent\n");
   console.log("  pnpm dev                 # optional local Eve service\n");
   console.log(
-    "\nGenerate an agent token in openhacker.ai, then set this Vercel env var:",
+    "\nDeploy to Vercel, then configure the Vercel Connect connector:",
   );
-  console.log("  OPENHACKER_TOKEN=ohag_...\n");
+  console.log("  custom/openhacker\n");
   console.log(
-    `${MUTED}Deploy: push to a git repo and import it into Vercel. The agent polls openhacker.ai for queued scans.${NC}`,
+    `${MUTED}Store the openhacker.ai agent credential in that connector. The agent accepts authenticated OpenHacker channel deliveries.${NC}`,
   );
   console.log(`${MUTED}See README.md for deployment and local model configuration.${NC}\n`);
 }

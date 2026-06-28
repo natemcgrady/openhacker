@@ -1,5 +1,5 @@
 {
-  "name": "@openhacker/agent",
+  "name": "@openhacker/openhacker-agent",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,6 +13,7 @@
     "eve:info": "eve info"
   },
   "dependencies": {
+    "@vercel/connect": "^0.2.10",
     "ai": "^7.0.3",
     "eve": "^0.16.2"
   },

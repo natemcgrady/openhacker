@@ -8,14 +8,14 @@ import {
   type StructuredFinding,
 } from "./platform";
 
-type EveScanOutput = {
+export type EveScanOutput = {
   readonly title?: string;
   readonly summary?: string;
   readonly markdown?: string;
   readonly findings?: readonly StructuredFinding[];
 };
 
-const SCAN_OUTPUT_SCHEMA = {
+export const SCAN_OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
@@ -94,8 +94,26 @@ async function runEveScan(repository: string): Promise<PlatformRunResult> {
     throw new Error("Eve session failed.");
   }
 
-  const data = result.data;
-  const markdown = normalizeString(data?.markdown) || result.message || "";
+  return normalizeScanResult(result.data, result.message, repository, result.sessionId);
+}
+
+export function buildScanPrompt(repository: string) {
+  return [
+    `Analyze the GitHub repository ${repository} for security vulnerabilities.`,
+    "Return a concise human-readable markdown report.",
+    "Also satisfy the requested structured output schema with the same findings.",
+    "Use severity values critical, high, medium, low, or info.",
+  ].join("\n");
+}
+
+export function normalizeScanResult(
+  data: unknown,
+  message: string | null | undefined,
+  repository: string,
+  eveSessionId?: string,
+): PlatformRunResult {
+  const output = isEveScanOutput(data) ? data : null;
+  const markdown = normalizeString(output?.markdown) || message || "";
 
   if (!markdown.trim()) {
     throw new Error("Eve did not return a report.");
@@ -104,26 +122,17 @@ async function runEveScan(repository: string): Promise<PlatformRunResult> {
   return {
     markdown,
     findings:
-      Array.isArray(data?.findings) && data.findings.length > 0
-        ? data.findings
+      Array.isArray(output?.findings) && output.findings.length > 0
+        ? output.findings
         : extractStructuredFindings(markdown),
     title:
-      normalizeString(data?.title) ||
+      normalizeString(output?.title) ||
       `Security report for ${repository}`,
     summary:
-      normalizeString(data?.summary) ||
+      normalizeString(output?.summary) ||
       markdown.replace(/\s+/g, " ").slice(0, 240),
-    eveSessionId: result.sessionId,
+    eveSessionId,
   };
-}
-
-function buildScanPrompt(repository: string) {
-  return [
-    `Analyze the GitHub repository ${repository} for security vulnerabilities.`,
-    "Return a concise human-readable markdown report.",
-    "Also satisfy the requested structured output schema with the same findings.",
-    "Use severity values critical, high, medium, low, or info.",
-  ].join("\n");
 }
 
 function getAgentUrl() {
@@ -188,4 +197,8 @@ function extractStructuredFindings(markdown: string): StructuredFinding[] {
 
 export function describeRunError(error: unknown) {
   return formatError(error);
+}
+
+function isEveScanOutput(value: unknown): value is EveScanOutput {
+  return !!value && typeof value === "object";
 }

@@ -8,16 +8,19 @@ customer-facing web UI.
 
 - Runs the OpenHacker Eve agent inside the customer's deployment boundary.
 - Uses the repository and scan instructions sent by the OpenHacker platform.
-- Authenticates platform communication with `OPENHACKER_TOKEN`.
-- Polls openhacker.ai on a Vercel Cron schedule, runs queued scans, and sends
-  reports back to the platform.
+- Authenticates platform communication through the project-linked Vercel Connect
+  connector `custom/openhacker`.
+- Exposes a custom OpenHacker Eve channel for inbound platform deliveries.
+- Polls openhacker.ai on a Vercel Cron schedule as a fallback, runs queued
+  scans, and sends reports back to the platform.
 
 ## Deploy to Vercel
 
 1. Push this directory to a Git repository.
 2. Import it into Vercel.
-3. Generate an agent token from `openhacker.ai/{team}`.
-4. Add `OPENHACKER_TOKEN` to the deployment environment.
+3. Generate an agent credential from `openhacker.ai/{team}`.
+4. Configure the project-linked Vercel Connect connector `custom/openhacker`
+   with that credential.
 5. Enable Vercel Deployment Protection or equivalent network controls for the
    project so only the intended platform path can reach Eve routes.
 
@@ -27,7 +30,20 @@ OIDC — no model API key required in production.
 This package intentionally does not include a dashboard, forms, or local report
 storage. Reports and findings belong in the OpenHacker platform.
 
-The sync schedule claims one pending run at a time from:
+The OpenHacker channel accepts authenticated deliveries on:
+
+```text
+POST /runs/{runId}
+WS /runs/ws
+```
+
+Each channel delivery claims the specific run from:
+
+```text
+POST /api/agent/runs/{runId}/claim
+```
+
+The sync schedule can still claim one pending run at a time from:
 
 ```text
 GET /api/agent/runs/next
@@ -44,7 +60,7 @@ POST /api/agent/runs/{runId}/failure
 
 ```bash
 pnpm install
-cp .env.example .env.local   # set AI_GATEWAY_API_KEY and OPENHACKER_TOKEN
+cp .env.example .env.local   # set AI_GATEWAY_API_KEY for local model calls
 pnpm dev
 ```
 
