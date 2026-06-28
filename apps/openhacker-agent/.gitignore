@@ -1,0 +1,23 @@
+# dependencies
+node_modules
+
+# eve build artifacts
+.eve
+.output
+
+# vercel / turbo
+.vercel
+.turbo
+
+# typescript
+tsconfig.tsbuildinfo
+
+# env files (keep the example)
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+*.log
+.workflow-data

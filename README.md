@@ -1,6 +1,9 @@
 # openhacker
 
-openhacker is a self-hosted autonomous security agent built using [eve](https://eve.dev). You scaffold an instance, deploy it to Vercel, then use its dashboard to paste a GitHub repository and have the agent analyze it for vulnerabilities.
+openhacker is a security platform with a headless customer-deployed
+[eve](https://eve.dev) agent. You scaffold the agent, deploy it to Vercel in
+your own environment, connect it to openhacker.ai through Vercel Connect, then
+queue repository scans from the openhacker.ai dashboard.
 
 ## Create and run an instance
 
@@ -8,25 +11,31 @@ openhacker is a self-hosted autonomous security agent built using [eve](https://
 npx openhacker my-openhacker-app
 
 cd my-openhacker-app
-pnpm dev
+pnpm eve:info
 ```
 
 `npx openhacker` scaffolds the instance, runs `pnpm install`, and creates an initial
 git commit automatically (pass `--skip-install` or `--skip-git` to opt out).
 
-Then open the printed URL, paste a GitHub repo, and click **Analyze**.
+Deploy the project to Vercel, then configure the project-linked Vercel Connect
+connector `custom/openhacker` with the agent credential generated in
+openhacker.ai. The OpenHacker custom Eve channel accepts authenticated platform
+deliveries, runs Eve inside your deployment boundary, and sends reports back to
+the platform. The scheduled poller remains as a fallback for queued scans.
 
 ## How the instance works
 
-- **One Vercel deploy.** `next.config.ts` wraps the app with `withEve`, so the dashboard
-  and the eve agent ship as a single project.
-- **Protected dashboard.** Deployments are intended to run behind Vercel
-  Deployment Protection. The browser calls the eve channel directly, so the
-  deployment gate is the production access boundary.
+- **Headless Eve deploy.** `eve build` emits the Vercel Build Output bundle, so
+  the Eve agent and its schedule deploy as one project.
+- **OpenHacker channel.** `agent/channels/openhacker.ts` exposes authenticated
+  HTTP and WebSocket routes so openhacker.ai can start a specific scan run.
+- **Vercel Connect auth.** The agent requests OpenHacker credentials from the
+  project-linked `custom/openhacker` connector instead of storing platform
+  tokens in environment variables.
 - **Inference via Vercel AI Gateway.** On Vercel it authenticates automatically through
   `VERCEL_OIDC_TOKEN` — no model key needed. Locally, set `AI_GATEWAY_API_KEY`.
-- **Simple storage for now.** This starter intentionally does not configure
-  external persistence yet.
+- **Platform storage.** Reports and findings are stored in openhacker.ai, not
+  in the customer-deployed agent.
 
 ## Contributing
 

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { GeistPixelSquare } from "geist/font/pixel";
 import "./globals.css";
 
-const description = "hacking soon";
+const description =
+  "Create an OpenHacker account, start a team, and access your workspace at openhacker.ai/team.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://openhacker.ai"),
@@ -19,7 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={GeistPixelSquare.className}>{children}</body>
+      <body className={`${GeistPixelSquare.className} site-shell`}>
+        {children}
+      </body>
     </html>
   );
 }

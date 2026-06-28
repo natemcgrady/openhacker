@@ -4,9 +4,9 @@
     "dev": "pnpm --filter @openhacker/web dev",
     "build": "pnpm -r build",
     "start": "pnpm --filter @openhacker/web start",
-    "agent:dev": "pnpm --filter @openhacker/agent dev",
-    "agent:build": "pnpm --filter @openhacker/agent build",
-    "agent:info": "pnpm --filter @openhacker/agent eve:info",
+    "openhacker-agent:dev": "pnpm --filter @openhacker/openhacker-agent dev",
+    "openhacker-agent:build": "pnpm --filter @openhacker/openhacker-agent build",
+    "openhacker-agent:info": "pnpm --filter @openhacker/openhacker-agent eve:info",
     "openhacker": "node packages/openhacker/bin/openhacker",
     "release": "pnpm --filter openhacker release"
   }

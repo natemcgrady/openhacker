@@ -25,10 +25,6 @@ const EXCLUDE = new Set([
 const GITIGNORE = `# dependencies
 node_modules
 
-# next.js
-.next
-next-env.d.ts
-
 # eve build artifacts
 .eve
 .output
@@ -69,10 +65,10 @@ async function resolveTemplateDir() {
   }
 
   candidates.push(
-    // npm package layout: packages/openhacker/src -> packages/openhacker/templates/agent
-    path.resolve(here, "../templates/agent"),
-    // monorepo layout: packages/openhacker/src -> repo root -> apps/agent
-    path.resolve(here, "../../../apps/agent"),
+    // npm package layout: packages/openhacker/src -> packages/openhacker/templates/openhacker-agent
+    path.resolve(here, "../templates/openhacker-agent"),
+    // monorepo layout: packages/openhacker/src -> repo root -> apps/openhacker-agent
+    path.resolve(here, "../../../apps/openhacker-agent"),
   );
 
   for (const candidate of candidates) {
@@ -99,7 +95,6 @@ function shouldCopyTemplatePath(src, root) {
 
   return (
     !segments.some((seg) => EXCLUDE.has(seg)) &&
-    !relative.endsWith("next-env.d.ts") &&
     !relative.endsWith("tsconfig.tsbuildinfo")
   );
 }
@@ -232,11 +227,16 @@ async function init(targetArg, { skipInstall = false, skipGit = false } = {}) {
   console.log(
     "  pnpm dlx vercel link    # link a Vercel project for AI/LLM access",
   );
-  console.log("  pnpm dev                 # run locally\n");
+  console.log("  pnpm eve:info            # verify the headless Eve agent\n");
+  console.log("  pnpm dev                 # optional local Eve service\n");
   console.log(
-    `${MUTED}Deploy: push to a git repo and import it into Vercel (deploys as one project).`,
+    "\nDeploy to Vercel, then configure the Vercel Connect connector:",
   );
-  console.log(`${MUTED}See README.md for local model configuration.${NC}\n`);
+  console.log("  custom/openhacker\n");
+  console.log(
+    `${MUTED}Store the openhacker.ai agent credential in that connector. The agent accepts authenticated OpenHacker channel deliveries.${NC}`,
+  );
+  console.log(`${MUTED}See README.md for deployment and local model configuration.${NC}\n`);
 }
 
 function usage() {
