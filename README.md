@@ -30,7 +30,7 @@ platform.
 
 ## How the instance works
 
-- **Headless Vercel deploy.** `next.config.ts` wraps the app with `withEve`, so
+- **Headless Eve deploy.** `eve build` emits the Vercel Build Output bundle, so
   the Eve agent and its schedule deploy as one project.
 - **Outbound sync.** The agent uses `OPENHACKER_TOKEN` to claim work from
   openhacker.ai and post scan results back to the platform.

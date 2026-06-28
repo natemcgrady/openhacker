@@ -1,10 +1,6 @@
 # dependencies
 node_modules
 
-# next.js
-.next
-next-env.d.ts
-
 # eve build artifacts
 .eve
 .output

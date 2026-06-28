@@ -1,8 +1,8 @@
 # openhacker instance
 
 Your self-hosted OpenHacker security agent. This is a headless
-[eve](https://eve.dev) app wrapped by Next.js only so it can be deployed on
-Vercel. It does not ship a customer-facing web UI.
+[eve](https://eve.dev) app that deploys directly to Vercel. It does not ship a
+customer-facing web UI.
 
 ## What it does
 
@@ -54,5 +54,5 @@ For local agent testing when this service is not running on port 3001, set:
 OPENHACKER_AGENT_URL=http://localhost:3001
 ```
 
-`pnpm dev` runs the Eve-enabled Next.js service locally. There is no local web
-dashboard; use `pnpm eve:info` to inspect the discovered agent configuration.
+`pnpm dev` runs the Eve dev runtime locally. There is no local web dashboard;
+use `pnpm eve:info` to inspect the discovered agent configuration.

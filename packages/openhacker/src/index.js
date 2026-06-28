@@ -25,10 +25,6 @@ const EXCLUDE = new Set([
 const GITIGNORE = `# dependencies
 node_modules
 
-# next.js
-.next
-next-env.d.ts
-
 # eve build artifacts
 .eve
 .output
@@ -99,7 +95,6 @@ function shouldCopyTemplatePath(src, root) {
 
   return (
     !segments.some((seg) => EXCLUDE.has(seg)) &&
-    !relative.endsWith("next-env.d.ts") &&
     !relative.endsWith("tsconfig.tsbuildinfo")
   );
 }
@@ -233,7 +228,7 @@ async function init(targetArg, { skipInstall = false, skipGit = false } = {}) {
     "  pnpm dlx vercel link    # link a Vercel project for AI/LLM access",
   );
   console.log("  pnpm eve:info            # verify the headless Eve agent\n");
-  console.log("  pnpm dev                 # optional local agent service\n");
+  console.log("  pnpm dev                 # optional local Eve service\n");
   console.log(
     "\nGenerate an agent token in openhacker.ai, then set this Vercel env var:",
   );

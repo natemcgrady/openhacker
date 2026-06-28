@@ -37,7 +37,6 @@ function shouldCopyTemplatePath(src) {
 
   return (
     !segments.some((seg) => EXCLUDE.has(seg)) &&
-    !relative.endsWith("next-env.d.ts") &&
     !relative.endsWith("tsconfig.tsbuildinfo")
   );
 }
