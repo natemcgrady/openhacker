@@ -1,6 +1,6 @@
 # openhacker
 
-openHacker is a self-hosted autonomous security agent built using [eve](https://eve.dev). You scaffold an instance, deploy it to Vercel, then manage everything from its dashboard: connect repositories, pick a model, and let it continuously scan for vulnerabilities and open remediation PRs.
+openhacker is a self-hosted autonomous security agent built using [eve](https://eve.dev). You scaffold an instance, deploy it to Vercel, then manage everything from its dashboard: connect repositories, pick a model, and let it continuously scan for vulnerabilities and open remediation PRs.
 
 ## Packages
 
